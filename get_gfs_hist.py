@@ -13,37 +13,33 @@ from datetime import timedelta, datetime
 from itertools import product
 from pydap.client import open_dods
 from pydap.exceptions import ServerError
-from traceback import format_exc
+from traceback import format_exc, print_exc
 
-DIR = "{0}/{1}/gfs_4_{1}_{2:02d}00"
-URL = "https://nomads.ncdc.noaa.gov/thredds/dodsC/gfs-004/{0}_{1:03d}.grb2.dods?"
+URL           = "https://nomads.ncdc.noaa.gov/thredds/dodsC/gfs-004/{0}_{1:03d}.grb2.dods?"
+DIR           = "{0}/{1}/gfs_4_{1}_{2:02d}00"
+FORMAT_STR    = "{var}.{var}[0][{lat[0]}:{lat[1]}][{lon[0]}:{lon[1]}]"
+FORMAT_STR_PL = "{var}.{var}[0][{lev[0]}:{lev[1]}][{lat[0]}:{lat[1]}][{lon[0]}:{lon[1]}]"
+DATE_FORMAT   = "%Y%m%d"
 
-
-FORMAT_STR    = "{0}.{0}[0][{lat[0]}:{lat[1]}][{lon[0]}:{lon[1]}]"
-FORMAT_STR_HAG = "{0}.{0}[0][0:2][{lat[0]}:{lat[1]}][{lon[0]}:{lon[1]}]"
-VAR_DIC = {"U-component_of_wind_height_above_ground": FORMAT_STR_HAG,
-           "Pressure_surface":                        FORMAT_STR,
-           "Temperature_height_above_ground":         FORMAT_STR_HAG,
-           "V-component_of_wind_height_above_ground": FORMAT_STR_HAG}
-
-FORMAT_STR_PL = "{0}.{0}[0][{lev[0]}:{lev[1]}][{lat[0]}:{lat[1]}][{lon[0]}:{lon[1]}]"
-VAR_DIC_PL = {"U-component_of_wind": FORMAT_STR_PL,
-              "V-component_of_wind": FORMAT_STR_PL,
-              "Temperature":         FORMAT_STR_PL,
-              "Geopotential_height": FORMAT_STR_PL}
-
-DATE_FORMAT = '%Y%m%d'
+VARS = {"Pressure_surface":                        {"type": "surface"},
+        "U-component_of_wind_height_above_ground": {"type": "height_above_ground", "levels": [0, 2]},
+        "V-component_of_wind_height_above_ground": {"type": "height_above_ground", "levels": [0, 2]},
+        "Temperature_height_above_ground":         {"type": "height_above_ground", "levels": [0, 2]},
+        "U-component_of_wind":                     {"type": "pressure",            "levels": [0, 5]},
+        "V-component_of_wind":                     {"type": "pressure",            "levels": [0, 5]},
+        "Temperature":                             {"type": "pressure",            "levels": [0, 5]},
+        "Geopotential_height":                     {"type": "pressure",            "levels": [0, 5]}}
 
 range1 = lambda start, end, step=1: range(start, end+1, step)
 
 def main(args):
 
     # leer parametros de entrada
-    parser = argparse.ArgumentParser(description=__doc__, epilog='Reportar bugs o sugerencias a <alberto.torres@uam.es>')
+    parser = argparse.ArgumentParser(description=__doc__, epilog='Report bugs or suggestions to <alberto.torres@icmat.es>')
     parser.add_argument('-x', '--lon', help='longitude range [Default: %(default)s]', default=(-9.5, 4.5), nargs=2, type=lon_type, metavar=('FIRST', 'LAST'))
     parser.add_argument('-y', '--lat', help='latitude range [Default: %(default)s]', default=(35.5, 44.0), nargs=2, type=lat_type, metavar=('FIRST', 'LAST'))
     parser.add_argument('-t', '--time', help='time steps [Default: %(default)s]', type=int, nargs=2, default=(0, 180), metavar=('FIRST', 'LAST'))
-    parser.add_argument('-l', '--lev', help='pressure levels [Default: %(default)s]', type=int, nargs=2, default=None, metavar=('FIRST', 'LAST'))
+    parser.add_argument('-c', '--config', help='JSON file with meteo vars configuration [Default: %(default)s]', type=str, default=None, metavar=('VAR_CONF'))
     parser.add_argument('-e', '--end-date', help='end date [Default: same as start date]', dest='end_date', metavar='END_DATE')
     parser.add_argument('-o', '--output', help='output path [Default: "%(default)s"]', default='.')
     parser.add_argument('-f', '--force', help='overwrite existing files', action='store_true')
@@ -57,6 +53,9 @@ def main(args):
 
     end_date = args.end_date if args.end_date else args.date
     hour_range = args.hour if type(args.hour) is tuple else (args.hour, )
+
+    if not args.config:
+        var_config = VARS
 
     #q = Queue(4)
 
@@ -73,9 +72,7 @@ def main(args):
                     if args.verbose:
                         print "Downloading {0} {1:02d}...".format(date_str, hour),
                 #    sys.stdout.flush()
-                    save_dataset(hour, date, args.lev, args.time, args.lat, args.lon, fname)
-                #except ValueError as err:
-                #    print err
+                    save_dataset(hour, date, var_config, args.time, args.lat, args.lon, fname)
                 except ServerError as err:
                     if not args.verbose:
                         print "[{0} {1:02d}]".format(date_str, hour),
@@ -84,12 +81,13 @@ def main(args):
                     if not args.verbose:
                         print "[{0} {1:02d}]".format(date_str, hour),
                     print "dataset not available"
+                #except ValueError as err:
+                #    print err
                 except:
                     if not args.verbose:
                         print "[{0} {1:02d}]".format(date_str, hour),
                     print format_exc().splitlines()[-1]
-                    #print "Unexpected error:", sys.exc_info()[0]
-                    #print sys.exc_info()[1]
+                    print_exc()
                 else:
                     if args.verbose:
                         print "done!"
@@ -146,65 +144,72 @@ def lon_type(str):
         return lon
 
 
-def get_sequential(file, time, lev_idx, lat_idx, lon_idx):
+def get_sequential(file, time, var_config, lat_idx, lon_idx):
 
-    request = URL.format(file, time)
-    params = {'lev': lev_idx, 'lat': lat_idx, 'lon': lon_idx}
-
-    if lev_idx is None:
-        vars = [ format_str.format(var, **params) for (var, format_str) in VAR_DIC.items() ]
-        nlev = -1
-    else:
-        vars = [ format_str.format(var, **params) for (var, format_str) in VAR_DIC_PL.items() ]
-        nlev = lev_idx[1]-lev_idx[0]+1
+    var_list = []
+    nlev_dict = {}
+    for var, config in var_config.items():
+        if config['type'] == 'surface':
+            var_list.append(FORMAT_STR.format(var=var, lat=lat_idx, lon=lon_idx))
+            nlev_dict[var] = -1
+        else:
+            lev_idx = tuple(config['levels'])
+            var_list.append(FORMAT_STR_PL.format(var=var, lev=lev_idx, lat=lat_idx, lon=lon_idx))
+            nlev_dict[var] = lev_idx[1]-lev_idx[0]+1
 
     ncoord = (lat_idx[1]-lat_idx[0]+1)*(lon_idx[1]-lon_idx[0]+1)
 
+    request = URL.format(file, time) + ','.join(var_list)
+
     try:
-        dataset = open_dods(request + ','.join(vars))
+        dataset = open_dods(request)
     except:
         # crear un np.array de error
         raise
 
     # the [...,::-1,:] reverses the latitudes axis
-    var_data = tuple([var[...,::-1,:].reshape(nlev, ncoord).T for var in dataset.data])
+    var_data = tuple([var.data[...,::-1,:].reshape(nlev_dict[var.id], ncoord).T for var in dataset])
     return np.concatenate(var_data, axis=1)
 
 
-def get_general(file, time, lev_idx, lat_idx, lon_idx_w, lon_idx_e):
+def get_general(file, time, var_config, lat_idx, lon_idx_w, lon_idx_e):
 
     request = URL.format(file, time)
-    params_w = {'lev': lev_idx, 'lat': lat_idx, 'lon': lon_idx_w}
-    params_e = {'lev': lev_idx, 'lat': lat_idx, 'lon': lon_idx_e}
 
-    if lev_idx is None:
-        vars_w = [ format_str.format(var, **params_w) for (var, format_str) in VAR_DIC.items() ]
-        vars_e = [ format_str.format(var, **params_e) for (var, format_str) in VAR_DIC.items() ]
-        nlev = -1
-    else:
-        vars_w = [ format_str.format(var, **params_w) for (var, format_str) in VAR_DIC_PL.items() ]
-        vars_e = [ format_str.format(var, **params_e) for (var, format_str) in VAR_DIC_PL.items() ]
-        nlev = lev_idx[1]-lev_idx[0]+1
+    var_w_list , var_e_list = [], []
+    nlev_dict = {}
+    for var, config in var_config.items():
+        if config['type'] == 'surface':
+            var_w_list.append(FORMAT_STR.format(var=var, lat=lat_idx, lon=lon_idx_w))
+            var_e_list.append(FORMAT_STR.format(var=var, lat=lat_idx, lon=lon_idx_e))
+            nlev_dict[var] = -1
+        else:
+            lev_idx = tuple(config['levels'])
+            var_w_list.append(FORMAT_STR_PL.format(var=var, lev=lev_idx, lat=lat_idx, lon=lon_idx_w))
+            var_e_list.append(FORMAT_STR_PL.format(var=var, lev=lev_idx, lat=lat_idx, lon=lon_idx_e))
+            nlev_dict[var] = lev_idx[1]-lev_idx[0]+1
 
     ncoord = (lat_idx[1]-lat_idx[0]+1)*((lon_idx_w[1]-lon_idx_w[0]+1) + (lon_idx_e[1]-lon_idx_e[0]+1))
 
+    request_w = request + ','.join(var_w_list)
+    request_e = request + ','.join(var_e_list)
+
     try:
-        dataset_w = open_dods(request + ','.join(vars_w))
-        dataset_e = open_dods(request + ','.join(vars_e))
+        dataset_w = open_dods(request_w)
+        dataset_e = open_dods(request_e)
     except:
         # crear un np.array de error
         raise
 
     # the [...,::-1,:] reverses the latitudes axis
-    var_data = tuple([ np.concatenate(var, axis=var[0].ndim-1)[...,::-1,:].reshape(nlev, ncoord).T for var in
-                       zip(dataset_w.data, dataset_e.data) ])
+    var_data = tuple([ (np.concatenate((var_w.data, var_e.data), axis=var_w.data.ndim-1)[...,::-1,:]
+                          .reshape(nlev_dict[var_w.id], ncoord).T) for var_w, var_e in zip(dataset_w, dataset_e) ])
 
     return np.concatenate(var_data, axis=1)
 
 
-def save_dataset(hour, date, lev_idx, time_tuple, lat_tuple, lon_tuple, fname):
+def save_dataset(hour, date, var_config, time_tuple, lat_tuple, lon_tuple, fname):
     """ Download the 4 datasets (00, 06, 12, 18) for a specific date """
-
     #hour = q.get()
     date_str = date.strftime("%Y%m%d")
     month_str = date.strftime("%Y%m")
@@ -250,7 +255,7 @@ def save_dataset(hour, date, lev_idx, time_tuple, lat_tuple, lon_tuple, fname):
             raise ValueError('Longitude not in the grid', lon_tuple)
         lon = np.concatenate((lon[range1(*lon_idx_w)], lon[range1(*lon_idx_e)]))
         try:
-            data = np.array([ get_general(file, time, lev_idx, lat_idx, lon_idx_w, lon_idx_e) for time in range1(time_tuple[0], time_tuple[1], 3) ])
+            data = np.array([ get_general(file, time, var_config, lat_idx, lon_idx_w, lon_idx_e) for time in range1(time_tuple[0], time_tuple[1], 3) ])
         except:
             raise
 
@@ -261,7 +266,7 @@ def save_dataset(hour, date, lev_idx, time_tuple, lat_tuple, lon_tuple, fname):
             raise ValueError('Longitude not in the grid', lon_tuple)
         lon = lon[range1(*lon_idx)]
         try:
-            data = np.array([ get_sequential(file, time, lev_idx, lat_idx, lon_idx) for time in range1(time_tuple[0], time_tuple[1], 3) ])
+            data = np.array([ get_sequential(file, time, var_config, lat_idx, lon_idx) for time in range1(time_tuple[0], time_tuple[1], 3) ])
         except:
             raise
 
