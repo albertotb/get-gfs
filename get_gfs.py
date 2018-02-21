@@ -6,19 +6,33 @@ import sys
 import os
 import argparse
 import numpy as np
+import pandas as pd
 from itertools import product
 from datetime import timedelta, datetime
 from pydap.client import open_dods
-from pydap.exceptions import ServerError
+from pydap.exceptions import ServerError, OpenFileError
+from inspect import getmembers
+from traceback import print_exc
 
-URL = "http://nomads.ncep.noaa.gov:9090/dods/gfs_{0}/gfs{1}/gfs_{0}_{2:02d}z.dods?"
+URL = "http://nomads.ncep.noaa.gov:9090/dods/gfs_{res}{step}/gfs{date}/gfs_{res}{step}_{hour:02d}z.dods?"
 
-FORMAT_STR = "{0}.{0}[{time[0]}:{time[1]}][{lat[0]}:{lat[1]}][{lon[0]}:{lon[1]}]"
-VAR_STR = ( "pressfc", "tmp2m", "tmp80m", "tmp100m", "ugrd10m", "ugrd80m", "ugrd100m", "vgrd10m", "vgrd80m", "vgrd100m")
-#VAR_STR = ( "pressfc", "tmp2m", "ugrd10m", "vgrd10m")
-
+FORMAT_STR    = "{0}.{0}[{time[0]}:{time[1]}][{lat[0]}:{lat[1]}][{lon[0]}:{lon[1]}]"
 FORMAT_STR_PL = "{0}.{0}[{time[0]}:{time[1]}][{lev[0]}:{lev[1]}][{lat[0]}:{lat[1]}][{lon[0]}:{lon[1]}]"
-VAR_STR_PL = ("hgtprs", "tmpprs", "ugrdprs", "vgrdprs")
+
+VAR_CONF = {"pressfc":  "surface",
+            "tmp2m":    "surface",
+            #"tmp80m":   "surface",
+            #"tmp100m":  "surface",
+            #"ugrd10m":  "surface",
+            #"ugrd80m":  "surface",
+            #"ugrd100m": "surface",
+            #"vgrd10m":  "surface",
+            #"vgrd80m":  "surface",
+            #"vgrd100m": "surface",
+            #"tmpprs":   "pressure",
+            #"ugrdprs":  "pressure",
+            #"vgrdprs":  "pressure",
+            "hgtprs":   "pressure"}
 
 DATE_FORMAT = '%Y%m%d'
 
@@ -27,22 +41,33 @@ range1 = lambda start, end, step=1: range(start, end+1, step)
 def main(args):
 
     # input parameters and options
-    parser = argparse.ArgumentParser(description=__doc__, epilog='Report bugs or suggestions to <alberto.torres@uam.es>')
-    parser.add_argument('-x', '--lon', help='longitude range [Default: %(default)s]', default=(-9.5, 4.5), nargs=2, type=lon_type, metavar=('FIRST', 'LAST'))
-    parser.add_argument('-y', '--lat', help='latitude range [Default: %(default)s]', default=(35.5, 44.0), nargs=2, type=lat_type, metavar=('FIRST', 'LAST'))
-    parser.add_argument('-t', '--time', help='time steps [Default: %(default)s]', type=int, nargs=2, default=(0, 60), metavar=('FIRST', 'LAST'))
-    parser.add_argument('-l', '--lev', help='pressure levels [Default: %(default)s]', type=int, nargs=2, default=None, metavar=('FIRST', 'LAST'))
-    parser.add_argument('-r', '--res', help='resolution [Default: %(default)s]', type=float, default=0.5)
+    parser = argparse.ArgumentParser(description=__doc__, epilog='Report bugs or suggestions to <alberto.torres@icmat.es>')
+    parser.add_argument('-x', '--lon',      help='longitude range [Default: %(default)s]',default=(-9.5,  4.5), nargs=2, type=lon_type, metavar=('FIRST', 'LAST'))
+    parser.add_argument('-y', '--lat',      help='latitude range [Default: %(default)s]', default=(35.5, 44.0), nargs=2, type=lat_type, metavar=('FIRST', 'LAST'))
+    parser.add_argument('-t', '--time',     help='time steps [Default: %(default)s]',      type=int, nargs=2, default=(0, 180), metavar=('FIRST', 'LAST'))
+    parser.add_argument('-p', '--pl',       help='pressure levels [Default: %(default)s]', type=int, nargs=2, default=(0,   1), metavar=('FIRST', 'LAST'))
+    parser.add_argument('-c', '--conf',     help='JSON file with meteo vars configuration [Default: %(default)s]', type=str, default=None, metavar=('VAR_CONF'))
+    parser.add_argument('-r', '--res',      help='spatial resolution in degrees [Default: %(default)s]', type=float, choices=(0.25, 0.5), default=0.5)
+    parser.add_argument('-s', '--step',     help='temporal resolution in hours [Default: %(default)s]',  type=int,   choices=(1, 3),      default=3)
     parser.add_argument('-e', '--end-date', help='end date [Default: DATE]', dest='end_date')
-    parser.add_argument('-o', '--output', help='output path [Default: %(default)s]', default='.')
-    parser.add_argument('-f', '--force', help='overwrite existing files', action='store_true')
+    parser.add_argument('-o', '--output',   help='output path [Default: %(default)s]', default='.')
+    parser.add_argument('-f', '--force',    help='overwrite existing files', action='store_true')
     parser.add_argument('-v', '--version', action='version', version='%(prog)s 1.0')
     parser.add_argument('date', metavar='DATE', help='date')
     parser.add_argument('hour', metavar='HOUR', help='hour [Default: %(default)s]', type=int, choices=range1(0,18,6), nargs='?', default=(0,6,12,18))
     args = parser.parse_args()
 
     if args.lat[0] > args.lat[1] or args.lon[0] > args.lon[1]:
-        sys.exit("First lat/lon has to be greater than the last")
+        sys.exit("First lat/lon has to be lower than the last")
+
+    if args.time[0] > args.time[1]:
+        sys.exit("First time step has to be lower than the last")
+
+    if not args.conf:
+        var_conf = VAR_CONF
+    else:
+        with open(args.conf, 'r') as f:
+            var_conf = json.load(f)
 
     end_date = args.end_date if args.end_date else args.date
     hour_range = args.hour if type(args.hour) is tuple else (args.hour, )
@@ -50,25 +75,28 @@ def main(args):
     # catch daterange exception
     for date in daterange(args.date, end_date):
         for hour in hour_range:
-            fname = "{0}/{1}_{2:02d}".format(args.output, date, hour)
+            date_str = date.strftime(DATE_FORMAT)
+            fname = "{0}/{1}_{2:02d}".format(args.output, date_str, hour)
 
             if not args.force and os.path.isfile(fname):
                 print "File {0} already exists".format(fname)
             else:
                 try:
-                    print "Downloading {0} {1:02d}...".format(date, hour),
+                    print "Downloading {0} {1:02d}...".format(date_str, hour),
                     sys.stdout.flush()
-                    save_dataset(fname, date, hour, args.res, args.time, args.lev, args.lat, args.lon)
+                    save_dataset(fname, date_str, hour, var_conf, args.res,
+                                 args.step, args.time, args.pl, args.lat, args.lon)
                 except (ValueError, TypeError) as err:
-                    print err
-                    return 1
-                except ServerError as err:
+                    print
+                    print_exc()
+                except (ServerError, OpenFileError) as err:
+                    print
                     print eval(str(err))
-                    return 2
                 except:
+                    print
                     print "Unexpected error:", sys.exc_info()[0]
                     print sys.exc_info()[1]
-                    return 3
+                    print_exc()
                 else:
                     print "done!"
     return 0
@@ -81,9 +109,11 @@ def daterange(start, end):
             return date.date()
         except TypeError:
             return date
+        # catch and raise:
+        #ValueError: day is out of range for month
 
     def get_date(n):
-        return datetime.strftime(convert(start) + timedelta(days=n), DATE_FORMAT)
+        return convert(start) + timedelta(days=n)
 
     days = (convert(end) - convert(start)).days
     if days < 0:
@@ -117,59 +147,51 @@ def lon_type(str):
 
 
 # catch exception if time_idx or lev_idx out of range
-def get_sequential(request, time_idx, lev_idx, lat_idx, lon_idx):
+def get_file(request, var_conf, step, time_tuple, lev_idx, lat_idx, lon_idx):
 
-    param = {'lat': lat_idx, 'lon': lon_idx, 'time': time_idx, 'lev': lev_idx}
+    time_idx = tuple(map(lambda x: x/step, time_tuple))
+    param  = {'lat': lat_idx, 'lon': lon_idx, 'time': time_idx, 'lev': lev_idx}
+    ntime  = (time_idx[1]-time_idx[0]+1)
+    ncoord = ( lat_idx[1]- lat_idx[0]+1)*(lon_idx[1]-lon_idx[0]+1)
 
-    ntime = (time_idx[1]-time_idx[0]+1)
+    var_list = []
+    for var, vartype in var_conf.items():
+        if vartype == 'surface':
+            format_str = FORMAT_STR
+        else:
+            format_str = FORMAT_STR_PL
 
-    if lev_idx is None:
-        vars = [ FORMAT_STR.format(var, **param) for var in VAR_STR ]
-        nlev = 1
-    else:
-        vars = [ FORMAT_STR_PL.format(var, **param) for var in VAR_STR_PL ]
-        nlev = lev_idx[1]-lev_idx[0]+1
+        var_list.append(format_str.format(var, **param))
 
-    dataset = open_dods(request + ','.join(vars))
+    try:
+        dataset = open_dods(request + ','.join(var_list))
+    except:
+        raise OpenFileError("file '{}' not available".format(request[:-1]))
 
-    var_data = np.array([ var.data.reshape(ntime, nlev, -1) for var in dataset ])
-    return var_data.transpose(3,1,0,2).reshape(-1, ntime*nlev*len(var_data))
+    var_data  = [ var.data.reshape((ntime, -1, ncoord)) for var in dataset ]
+    var_names = ['{}{}'.format(var.id, n) for idx, var in enumerate(dataset)
+                                          for n in range(var_data[idx].shape[1])]
 
+    index = pd.MultiIndex.from_product((range1(*time_tuple, step=step), var_names),
+                                       names=['time', 'var'])
 
-# catch exception if time_idx or lev_idx out of range
-def get_general(request, time_idx, lev_idx, lat_idx, lon_idx_w, lon_idx_e):
-
-    param_w = {'lat': lat_idx, 'lon': lon_idx_w, 'time': time_idx, 'lev': lev_idx}
-    param_e = {'lat': lat_idx, 'lon': lon_idx_e, 'time': time_idx, 'lev': lev_idx}
-
-    ntime = (time_idx[1]-time_idx[0]+1)
-
-    if lev_idx is None:
-        vars_w = [ FORMAT_STR.format(var, **param_w) for var in VAR_STR ]
-        vars_e = [ FORMAT_STR.format(var, **param_e) for var in VAR_STR ]
-        nlev = 1
-    else:
-        vars_w = [ FORMAT_STR_PL.format(var, **param_w) for var in VAR_STR_PL ]
-        vars_e = [ FORMAT_STR_PL.format(var, **param_e) for var in VAR_STR_PL ]
-        nlev = (lev_idx[1]-lev_idx[0]+1)
-
-    dataset_w = open_dods(request + ','.join(vars_w))
-    dataset_e = open_dods(request + ','.join(vars_e))
-
-    var_data = np.array([ np.concatenate(var, axis=var[0].ndim-1).reshape(ntime, nlev, -1)
-                          for var in zip(dataset_w.data, dataset_e.data) ])
-
-    return var_data.transpose(3,1,0,2).reshape(-1, ntime*nlev*len(var_data))
+    return pd.DataFrame((np.concatenate(var_data, axis=1)
+                           .transpose(2,0,1)
+                           .reshape(ncoord, -1)), columns=index)
 
 
-def save_dataset(fname, date, hour, res, time_idx, lev_idx, lat_tuple, lon_tuple):
+def save_dataset(fname, date, hour, var_conf, res, step, time_tuple, lev_idx,
+                 lat_tuple, lon_tuple):
 
-    request = URL.format("{0:.2f}".format(res).replace(".","p"), date, hour)
+    request = URL.format(date = date, hour = hour,
+                         res  = "{0:.2f}".format(res).replace(".","p"),
+                         step = "" if step == 3 else "_{:1d}hr".format(step))
 
     try:
         coord = open_dods(request + "lat,lon")
     except:
-        raise
+        raise OpenFileError("file '{}' not available".format(request[:-1]))
+
 
     # slicing [:] downloads the data from the server
     lat, lon = coord['lat'][:], coord['lon'][:]
@@ -185,7 +207,7 @@ def save_dataset(fname, date, hour, res, time_idx, lev_idx, lat_tuple, lon_tuple
     except:
         raise ValueError('Latitude not in the grid', lat_tuple)
 
-    lat = lat[range1(*lat_idx)]
+    lat = lat[range1(*lat_idx)].tolist()
 
     if lon_tuple[0] < 0 and lon_tuple[1] > 0:
         try:
@@ -193,23 +215,32 @@ def save_dataset(fname, date, hour, res, time_idx, lev_idx, lat_tuple, lon_tuple
             lon_idx_e = (0, lon_list.index(lon_tuple[1]))
         except:
             raise ValueError('Longitude not in the grid', lon_tuple)
-        lon = np.concatenate((lon[range1(*lon_idx_w)], lon[range1(*lon_idx_e)]))
 
-        data = get_general(request, time_idx, lev_idx, lat_idx, lon_idx_w, lon_idx_e)
+        lon = (np.concatenate((lon[range1(*lon_idx_w)], lon[range1(*lon_idx_e)]))
+                 .tolist())
+
+        try:
+            data_w = get_file(request, var_conf, step, time_tuple, lev_idx, lat_idx, lon_idx_w)
+            data_e = get_file(request, var_conf, step, time_tuple, lev_idx, lat_idx, lon_idx_e)
+            data = pd.concat((data_w, data_e), axis=0, ignore_index=True)
+        except:
+            raise
 
     else:
         try:
             lon_idx = (lon_list.index(lon_tuple[0]), lon_list.index(lon_tuple[1]))
         except:
             raise ValueError('Longitude not in the grid', lon_tuple)
-        lon = lon[range1(*lon_idx)]
 
-        data = get_sequential(request, time_idx, lev_idx, lat_idx, lon_idx)
+        lon = lon[range1(*lon_idx)].tolist()
 
-    coord = np.array(list(product(lat, lon)))
-    dataset = np.hstack((coord[:,1][:, np.newaxis], coord[:,0][:, np.newaxis], data))
+        try:
+            data = get_file(request, var_conf, step, time_tuple, lev_idx, lat_idx, lon_idx)
+        except:
+            raise
 
-    np.savetxt(fname, dataset, fmt='%.2f')
+    data.index = pd.MultiIndex.from_product((lat, lon), names=['lat', 'lon'])
+    data.to_csv(fname, sep=" ", float_format='%.3f')
 
 
 if __name__ == '__main__':
