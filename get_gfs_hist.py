@@ -33,72 +33,6 @@ VARS = {"Pressure_surface":                        {"type": "surface"},
         "Geopotential_height":                     {"type": "pressure",            "levels": [0, 1]}}
 
 
-def main(args):
-
-    # leer parametros de entrada
-    parser = argparse.ArgumentParser(description=__doc__, epilog='Report bugs or suggestions to <alberto.torres@icmat.es>')
-    parser.add_argument('-x', '--lon', help='longitude range [Default: %(default)s]', default=(-9.5, 4.5), nargs=2, type=lon_type, metavar=('FIRST', 'LAST'))
-    parser.add_argument('-y', '--lat', help='latitude range [Default: %(default)s]', default=(35.5, 44.0), nargs=2, type=lat_type, metavar=('FIRST', 'LAST'))
-    parser.add_argument('-t', '--time', help='time steps [Default: %(default)s]', type=int, nargs=2, default=(0, 180), metavar=('FIRST', 'LAST'))
-    parser.add_argument('-c', '--config', help='JSON file with meteo vars configuration [Default: %(default)s]', type=str, default=None, metavar=('VAR_CONF'))
-    parser.add_argument('-e', '--end-date', help='end date [Default: same as start date]', dest='end_date', metavar='END_DATE')
-    parser.add_argument('-o', '--output', help='output path [Default: "%(default)s"]', default='.')
-    parser.add_argument('-f', '--force', help='overwrite existing files', action='store_true')
-    parser.add_argument('-v', '--verbose', help='print download progress', action='store_true')
-    parser.add_argument('date', metavar='DATE', help='date')
-    parser.add_argument('hour', metavar='HOUR', help='hour [Default: %(default)s]', type=int, choices=range1(0,18,6), nargs='?', default=(0,6,12,18))
-    args = parser.parse_args()
-
-    if args.lat[0] > args.lat[1] or args.lon[0] > args.lon[1]:
-        sys.exit("First lat/lon has to be lower than the last")
-
-    if args.time[0] > args.time[1]:
-        sys.exit("First time step has to be lower than the last")
-
-    end_date = args.end_date if args.end_date else args.date
-    hour_range = args.hour if type(args.hour) is tuple else (args.hour, )
-
-    if not args.config:
-        var_config = VARS
-    else:
-        with open(args.config, 'r') as f:
-            var_config = json.load(f)
-
-    # catch daterange exception
-    for date in daterange(args.date, end_date):
-        for hour in hour_range:
-
-            date_str = date.strftime(DATE_FORMAT)
-            fname = "{0}/{1}_{2:02d}".format(args.output, date_str, hour)
-
-            if not os.path.isfile(fname) or args.force:
-                try:
-                    if args.verbose:
-                        print "Downloading {0} {1:02d}...".format(date_str, hour),
-                    save_dataset(hour, date, var_config, args.time, args.lat, args.lon, fname)
-                except ServerError as err:
-                    if not args.verbose:
-                        print "[{0} {1:02d}]".format(date_str, hour),
-                    print eval(str(err))
-                except UnboundLocalError:
-                    if not args.verbose:
-                        print "[{0} {1:02d}]".format(date_str, hour),
-                    print "dataset not available"
-                #except ValueError as err:
-                #    print err
-                except:
-                    if not args.verbose:
-                        print "[{0} {1:02d}]".format(date_str, hour),
-                    print format_exc().splitlines()[-1]
-                    print_exc()
-                else:
-                    if args.verbose:
-                        print "done!"
-            else:
-                if args.verbose:
-                    print "File {0} already exists (re-run with -f to overwrite)".format(fname)
-
-
 def get_sequential(file, time, var_config, lat_idx, lon_idx):
 
     var_list = []
@@ -119,7 +53,6 @@ def get_sequential(file, time, var_config, lat_idx, lon_idx):
     try:
         dataset = open_dods(request)
     except:
-        # crear un np.array de error
         raise
 
     var_data = [ pd.DataFrame(var.data.reshape(nlev_dict[var.name], ncoord).T,
@@ -156,12 +89,12 @@ def get_general(file, time, var_config, lat_idx, lon_idx_w, lon_idx_e):
         dataset_w = open_dods(request_w)
         dataset_e = open_dods(request_e)
     except:
-        # crear un np.array de error
         raise
 
     # 1. Concatenate both 'west' and 'east' data along 'lon' axis (last axis)
     # 2. Reshape 4D-array (1, nlev, nlat, nlon) to 2D-array (nlev, nlat*nlon)
     # 3. Transpose and store in DataFrame
+    # This is ugly :(, partly because the long function names
     var_data = [ pd.DataFrame((np.concatenate((var_w.data, var_e.data),
                                               axis=len(var_w.shape)-1)
                                  .reshape(nlev_dict[var_w.name], ncoord).T),
@@ -174,6 +107,7 @@ def get_general(file, time, var_config, lat_idx, lon_idx_w, lon_idx_e):
     #    of levels (either pressure levels or height above ground levels)
     return pd.concat(var_data, axis=1)
 
+
 def save_dataset(hour, date, var_config, time_tuple, lat_tuple, lon_tuple, fname):
     """ Download the datasets for a specific date and hour """
 
@@ -184,7 +118,7 @@ def save_dataset(hour, date, var_config, time_tuple, lat_tuple, lon_tuple, fname
 
     time_list = list(range1(time_tuple[0], time_tuple[1], 3))
 
-    # get the lat and lon grids from the first dataset present in the server
+    # Get the lat and lon grids from the first dataset present in the server
     for time in time_list:
 
         request = URL.format(file, time)
@@ -202,13 +136,13 @@ def save_dataset(hour, date, var_config, time_tuple, lat_tuple, lon_tuple, fname
         # none of the 180/3 + 1 datasets where present in the server
         raise
 
-    # transform longitudes from range 0..360 to -180..180
+    # Transform longitudes from range 0..360 to -180..180
     lon = np.where(lon > 180, lon-360, lon)
 
-    # transform into python lists to use the index() method
+    # Transform into python lists to use the index() method
+    # Actually it would be better to use np.where()
     lat_list, lon_list = lat.tolist(), lon.tolist()
 
-    # TODO: do this with argmin
     try:
         lat_idx = (lat_list.index(lat_tuple[1]), lat_list.index(lat_tuple[0]))
     except:
@@ -247,6 +181,71 @@ def save_dataset(hour, date, var_config, time_tuple, lat_tuple, lon_tuple, fname
     data.index = pd.MultiIndex.from_product((lat, lon), names=[ 'lat', 'lon'])
     data.sort_index(inplace=True)
     data.to_csv(fname, sep=" ", float_format='%.3f')
+
+
+def main(args):
+
+    # Read input arguments
+    parser = argparse.ArgumentParser(description=__doc__, epilog='Report bugs or suggestions to <alberto.torres@icmat.es>')
+    parser.add_argument('-x', '--lon', help='longitude range [Default: %(default)s]', default=(-9.5, 4.5), nargs=2, type=lon_type, metavar=('FIRST', 'LAST'))
+    parser.add_argument('-y', '--lat', help='latitude range [Default: %(default)s]', default=(35.5, 44.0), nargs=2, type=lat_type, metavar=('FIRST', 'LAST'))
+    parser.add_argument('-t', '--time', help='time steps [Default: %(default)s]', type=int, nargs=2, default=(0, 180), metavar=('FIRST', 'LAST'))
+    parser.add_argument('-c', '--config', help='JSON file with meteo vars configuration [Default: %(default)s]', type=str, default=None, metavar=('VAR_CONF'))
+    parser.add_argument('-e', '--end-date', help='end date [Default: same as start date]', dest='end_date', metavar='END_DATE')
+    parser.add_argument('-o', '--output', help='output path [Default: "%(default)s"]', default='.')
+    parser.add_argument('-f', '--force', help='overwrite existing files', action='store_true')
+    parser.add_argument('-v', '--verbose', help='print download progress', action='store_true')
+    parser.add_argument('date', metavar='DATE', help='date')
+    parser.add_argument('hour', metavar='HOUR', help='hour [Default: %(default)s]', type=int, choices=range1(0,18,6), nargs='?', default=(0,6,12,18))
+    args = parser.parse_args()
+
+    if args.lat[0] > args.lat[1] or args.lon[0] > args.lon[1]:
+        sys.exit("First lat/lon has to be lower than the last")
+
+    if args.time[0] > args.time[1]:
+        sys.exit("First time step has to be lower than the last")
+
+    end_date = args.end_date if args.end_date else args.date
+    hour_range = args.hour if type(args.hour) is tuple else (args.hour, )
+
+    if not args.config:
+        var_config = VARS
+    else:
+        with open(args.config, 'r') as f:
+            var_config = json.load(f)
+
+    for date in daterange(args.date, end_date):
+        for hour in hour_range:
+
+            date_str = date.strftime(DATE_FORMAT)
+            fname = "{0}/{1}_{2:02d}".format(args.output, date_str, hour)
+
+            if not os.path.isfile(fname) or args.force:
+                try:
+                    if args.verbose:
+                        print "Downloading {0} {1:02d}...".format(date_str, hour),
+                    save_dataset(hour, date, var_config, args.time, args.lat, args.lon, fname)
+                except ServerError as err:
+                    if not args.verbose:
+                        print "[{0} {1:02d}]".format(date_str, hour),
+                    print eval(str(err))
+                except UnboundLocalError:
+                    if not args.verbose:
+                        print "[{0} {1:02d}]".format(date_str, hour),
+                    print "dataset not available"
+                #except ValueError as err:
+                #    print err
+                except:
+                    if not args.verbose:
+                        print "[{0} {1:02d}]".format(date_str, hour),
+                    print format_exc().splitlines()[-1]
+                    print_exc()
+                else:
+                    if args.verbose:
+                        print "done!"
+            else:
+                if args.verbose:
+                    print "File {0} already exists (re-run with -f to overwrite)".format(fname)
 
 
 if __name__ == '__main__':
