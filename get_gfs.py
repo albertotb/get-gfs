@@ -146,22 +146,13 @@ def lon_type(str):
         return lon
 
 
-# catch exception if time_idx or lev_idx out of range
-def get_file(request, var_conf, step, time_tuple, lev_idx, lat_idx, lon_idx):
+def get_file(request, param, var_conf, time, lat, lon):
 
-    time_idx = tuple(map(lambda x: x/step, time_tuple))
-    param  = {'lat': lat_idx, 'lon': lon_idx, 'time': time_idx, 'lev': lev_idx}
-    ntime  = (time_idx[1]-time_idx[0]+1)
-    ncoord = ( lat_idx[1]- lat_idx[0]+1)*(lon_idx[1]-lon_idx[0]+1)
+    ntime  = len(time)
+    ncoord = len(lat) * len(lon)
 
-    var_list = []
-    for var, vartype in var_conf.items():
-        if vartype == 'surface':
-            format_str = FORMAT_STR
-        else:
-            format_str = FORMAT_STR_PL
-
-        var_list.append(format_str.format(var, **param))
+    var_list = [ ((FORMAT_STR if vartype == 'surface' else FORMAT_STR_PL)
+                  .format(var, **param)) for var, vartype in var_conf.items() ]
 
     try:
         dataset = open_dods(request + ','.join(var_list))
@@ -172,12 +163,12 @@ def get_file(request, var_conf, step, time_tuple, lev_idx, lat_idx, lon_idx):
     var_names = ['{}{}'.format(var.id, n) for idx, var in enumerate(dataset)
                                           for n in range(var_data[idx].shape[1])]
 
-    index = pd.MultiIndex.from_product((range1(*time_tuple, step=step), var_names),
-                                       names=['time', 'var'])
+    index   = pd.MultiIndex.from_product((lat, lon),        names=[ 'lat', 'lon'])
+    columns = pd.MultiIndex.from_product((time, var_names), names=['time', 'var'])
 
     return pd.DataFrame((np.concatenate(var_data, axis=1)
                            .transpose(2,0,1)
-                           .reshape(ncoord, -1)), columns=index)
+                           .reshape(ncoord, -1)), index=index, columns=columns)
 
 
 def save_dataset(fname, date, hour, var_conf, res, step, time_tuple, lev_idx,
@@ -192,6 +183,8 @@ def save_dataset(fname, date, hour, var_conf, res, step, time_tuple, lev_idx,
     except:
         raise OpenFileError("file '{}' not available".format(request[:-1]))
 
+    time = range1(*time_tuple, step=step)
+    time_idx = (time_tuple[0]/step, time_tuple[1]/step)
 
     # slicing [:] downloads the data from the server
     lat, lon = coord['lat'][:], coord['lon'][:]
@@ -200,6 +193,7 @@ def save_dataset(fname, date, hour, var_conf, res, step, time_tuple, lev_idx,
     lon = np.where(lon > 180, lon-360, lon)
 
     # transform into python lists to use the index() method
+    # TODO: change to find the closest and not an exact match
     lat_list, lon_list = lat.tolist(), lon.tolist()
 
     try:
@@ -216,15 +210,17 @@ def save_dataset(fname, date, hour, var_conf, res, step, time_tuple, lev_idx,
         except:
             raise ValueError('Longitude not in the grid', lon_tuple)
 
-        lon = (np.concatenate((lon[range1(*lon_idx_w)], lon[range1(*lon_idx_e)]))
-                 .tolist())
+        lon_w = lon[range1(*lon_idx_w)].tolist()
+        lon_e = lon[range1(*lon_idx_e)].tolist()
 
+        param_w  = {'lat': lat_idx, 'lon': lon_idx_w, 'time': time_idx, 'lev': lev_idx}
+        param_e  = {'lat': lat_idx, 'lon': lon_idx_e, 'time': time_idx, 'lev': lev_idx}
         try:
-            data_w = get_file(request, var_conf, step, time_tuple, lev_idx, lat_idx, lon_idx_w)
-            data_e = get_file(request, var_conf, step, time_tuple, lev_idx, lat_idx, lon_idx_e)
-            data = pd.concat((data_w, data_e), axis=0, ignore_index=True)
+            data_w = get_file(request, param_w, var_conf, time, lat, lon_w)
+            data_e = get_file(request, param_e, var_conf, time, lat, lon_e)
         except:
             raise
+        data = pd.concat((data_w, data_e), axis=0)
 
     else:
         try:
@@ -234,12 +230,12 @@ def save_dataset(fname, date, hour, var_conf, res, step, time_tuple, lev_idx,
 
         lon = lon[range1(*lon_idx)].tolist()
 
+        param  = {'lat': lat_idx, 'lon': lon_idx, 'time': time_idx, 'lev': lev_idx}
         try:
-            data = get_file(request, var_conf, step, time_tuple, lev_idx, lat_idx, lon_idx)
+            data = get_file(request, param, var_conf, time, lat, lon)
         except:
             raise
 
-    data.index = pd.MultiIndex.from_product((lat, lon), names=['lat', 'lon'])
     data.to_csv(fname, sep=" ", float_format='%.3f')
 
 
