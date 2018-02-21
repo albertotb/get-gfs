@@ -16,90 +16,27 @@ from traceback import print_exc
 
 URL = "http://nomads.ncep.noaa.gov:9090/dods/gfs_{res}{step}/gfs{date}/gfs_{res}{step}_{hour:02d}z.dods?"
 
-FORMAT_STR    = "{0}.{0}[{time[0]}:{time[1]}][{lat[0]}:{lat[1]}][{lon[0]}:{lon[1]}]"
-FORMAT_STR_PL = "{0}.{0}[{time[0]}:{time[1]}][{lev[0]}:{lev[1]}][{lat[0]}:{lat[1]}][{lon[0]}:{lon[1]}]"
+FORMAT_STR    = "{var}.{var}[{time[0]}:{time[1]}][{lat[0]}:{lat[1]}][{lon[0]}:{lon[1]}]"
+FORMAT_STR_PL = "{var}.{var}[{time[0]}:{time[1]}][{lev[0]}:{lev[1]}][{lat[0]}:{lat[1]}][{lon[0]}:{lon[1]}]"
 
 VAR_CONF = {"pressfc":  "surface",
             "tmp2m":    "surface",
-            #"tmp80m":   "surface",
-            #"tmp100m":  "surface",
-            #"ugrd10m":  "surface",
-            #"ugrd80m":  "surface",
-            #"ugrd100m": "surface",
-            #"vgrd10m":  "surface",
-            #"vgrd80m":  "surface",
-            #"vgrd100m": "surface",
-            #"tmpprs":   "pressure",
-            #"ugrdprs":  "pressure",
-            #"vgrdprs":  "pressure",
+            "tmp80m":   "surface",
+            "tmp100m":  "surface",
+            "ugrd10m":  "surface",
+            "ugrd80m":  "surface",
+            "ugrd100m": "surface",
+            "vgrd10m":  "surface",
+            "vgrd80m":  "surface",
+            "vgrd100m": "surface",
+            "tmpprs":   "pressure",
+            "ugrdprs":  "pressure",
+            "vgrdprs":  "pressure",
             "hgtprs":   "pressure"}
 
 DATE_FORMAT = '%Y%m%d'
 
 range1 = lambda start, end, step=1: range(start, end+1, step)
-
-def main(args):
-
-    # input parameters and options
-    parser = argparse.ArgumentParser(description=__doc__, epilog='Report bugs or suggestions to <alberto.torres@icmat.es>')
-    parser.add_argument('-x', '--lon',      help='longitude range [Default: %(default)s]',default=(-9.5,  4.5), nargs=2, type=lon_type, metavar=('FIRST', 'LAST'))
-    parser.add_argument('-y', '--lat',      help='latitude range [Default: %(default)s]', default=(35.5, 44.0), nargs=2, type=lat_type, metavar=('FIRST', 'LAST'))
-    parser.add_argument('-t', '--time',     help='time steps [Default: %(default)s]',      type=int, nargs=2, default=(0, 180), metavar=('FIRST', 'LAST'))
-    parser.add_argument('-p', '--pl',       help='pressure levels [Default: %(default)s]', type=int, nargs=2, default=(0,   1), metavar=('FIRST', 'LAST'))
-    parser.add_argument('-c', '--conf',     help='JSON file with meteo vars configuration [Default: %(default)s]', type=str, default=None, metavar=('VAR_CONF'))
-    parser.add_argument('-r', '--res',      help='spatial resolution in degrees [Default: %(default)s]', type=float, choices=(0.25, 0.5), default=0.5)
-    parser.add_argument('-s', '--step',     help='temporal resolution in hours [Default: %(default)s]',  type=int,   choices=(1, 3),      default=3)
-    parser.add_argument('-e', '--end-date', help='end date [Default: DATE]', dest='end_date')
-    parser.add_argument('-o', '--output',   help='output path [Default: %(default)s]', default='.')
-    parser.add_argument('-f', '--force',    help='overwrite existing files', action='store_true')
-    parser.add_argument('-v', '--version', action='version', version='%(prog)s 1.0')
-    parser.add_argument('date', metavar='DATE', help='date')
-    parser.add_argument('hour', metavar='HOUR', help='hour [Default: %(default)s]', type=int, choices=range1(0,18,6), nargs='?', default=(0,6,12,18))
-    args = parser.parse_args()
-
-    if args.lat[0] > args.lat[1] or args.lon[0] > args.lon[1]:
-        sys.exit("First lat/lon has to be lower than the last")
-
-    if args.time[0] > args.time[1]:
-        sys.exit("First time step has to be lower than the last")
-
-    if not args.conf:
-        var_conf = VAR_CONF
-    else:
-        with open(args.conf, 'r') as f:
-            var_conf = json.load(f)
-
-    end_date = args.end_date if args.end_date else args.date
-    hour_range = args.hour if type(args.hour) is tuple else (args.hour, )
-
-    # catch daterange exception
-    for date in daterange(args.date, end_date):
-        for hour in hour_range:
-            date_str = date.strftime(DATE_FORMAT)
-            fname = "{0}/{1}_{2:02d}".format(args.output, date_str, hour)
-
-            if not args.force and os.path.isfile(fname):
-                print "File {0} already exists".format(fname)
-            else:
-                try:
-                    print "Downloading {0} {1:02d}...".format(date_str, hour),
-                    sys.stdout.flush()
-                    save_dataset(fname, date_str, hour, var_conf, args.res,
-                                 args.step, args.time, args.pl, args.lat, args.lon)
-                except (ValueError, TypeError) as err:
-                    print
-                    print_exc()
-                except (ServerError, OpenFileError) as err:
-                    print
-                    print eval(str(err))
-                except:
-                    print
-                    print "Unexpected error:", sys.exc_info()[0]
-                    print sys.exc_info()[1]
-                    print_exc()
-                else:
-                    print "done!"
-    return 0
 
 
 def daterange(start, end):
@@ -109,8 +46,8 @@ def daterange(start, end):
             return date.date()
         except TypeError:
             return date
-        # catch and raise:
-        #ValueError: day is out of range for month
+        # Catch and raise:
+        # ValueError: day is out of range for month
 
     def get_date(n):
         return convert(start) + timedelta(days=n)
@@ -183,17 +120,19 @@ def save_dataset(fname, date, hour, var_conf, res, step, time_tuple, lev_idx,
     except:
         raise OpenFileError("file '{}' not available".format(request[:-1]))
 
+    # We don't get the time array from the server since it is in seconds from a
+    # date. Instead we compute the times in hours manually.
     time = range1(*time_tuple, step=step)
     time_idx = (time_tuple[0]/step, time_tuple[1]/step)
 
-    # slicing [:] downloads the data from the server
+    # Slicing [:] downloads the data from the server
     lat, lon = coord['lat'][:], coord['lon'][:]
 
-    # transform longitudes from range 0..360 to -180..180
+    # Transform longitudes from range 0..360 to -180..180
     lon = np.where(lon > 180, lon-360, lon)
 
-    # transform into python lists to use the index() method
-    # TODO: change to find the closest and not an exact match
+    # Transform into python lists to use the index() method
+    # TODO: change to find the closest lat/lon with argmin and not an exact match
     lat_list, lon_list = lat.tolist(), lon.tolist()
 
     try:
@@ -202,6 +141,7 @@ def save_dataset(fname, date, hour, var_conf, res, step, time_tuple, lev_idx,
         raise ValueError('Latitude not in the grid', lat_tuple)
 
     lat = lat[range1(*lat_idx)].tolist()
+
 
     if lon_tuple[0] < 0 and lon_tuple[1] > 0:
         try:
@@ -237,6 +177,70 @@ def save_dataset(fname, date, hour, var_conf, res, step, time_tuple, lev_idx,
             raise
 
     data.to_csv(fname, sep=" ", float_format='%.3f')
+
+
+def main(args):
+
+    # Input parameters and options
+    parser = argparse.ArgumentParser(description=__doc__, epilog='Report bugs or suggestions to <alberto.torres@icmat.es>')
+    parser.add_argument('-x', '--lon',      help='longitude range [Default: %(default)s]',default=(-9.5,  4.5), nargs=2, type=lon_type, metavar=('FIRST', 'LAST'))
+    parser.add_argument('-y', '--lat',      help='latitude range [Default: %(default)s]', default=(35.5, 44.0), nargs=2, type=lat_type, metavar=('FIRST', 'LAST'))
+    parser.add_argument('-t', '--time',     help='time steps [Default: %(default)s]',      type=int, nargs=2, default=(0, 180), metavar=('FIRST', 'LAST'))
+    parser.add_argument('-p', '--pl',       help='pressure levels [Default: %(default)s]', type=int, nargs=2, default=(0,   1), metavar=('FIRST', 'LAST'))
+    parser.add_argument('-c', '--conf',     help='JSON file with meteo vars configuration [Default: %(default)s]', type=str, default=None, metavar=('VAR_CONF'))
+    parser.add_argument('-r', '--res',      help='spatial resolution in degrees [Default: %(default)s]', type=float, choices=(0.25, 0.5), default=0.5)
+    parser.add_argument('-s', '--step',     help='temporal resolution in hours [Default: %(default)s]',  type=int,   choices=(1, 3),      default=3)
+    parser.add_argument('-e', '--end-date', help='end date [Default: DATE]', dest='end_date')
+    parser.add_argument('-o', '--output',   help='output path [Default: %(default)s]', default='.')
+    parser.add_argument('-f', '--force',    help='overwrite existing files', action='store_true')
+    parser.add_argument('-v', '--version', action='version', version='%(prog)s 1.0')
+    parser.add_argument('date', metavar='DATE', help='date')
+    parser.add_argument('hour', metavar='HOUR', help='hour [Default: %(default)s]', type=int, choices=range1(0,18,6), nargs='?', default=(0,6,12,18))
+    args = parser.parse_args()
+
+    if args.lat[0] > args.lat[1] or args.lon[0] > args.lon[1]:
+        sys.exit("First lat/lon has to be lower than the last")
+
+    if args.time[0] > args.time[1]:
+        sys.exit("First time step has to be lower than the last")
+
+    if not args.conf:
+        var_conf = VAR_CONF
+    else:
+        with open(args.conf, 'r') as f:
+            var_conf = json.load(f)
+
+    end_date = args.end_date if args.end_date else args.date
+    hour_range = args.hour if type(args.hour) is tuple else (args.hour, )
+
+    # Catch daterange exception
+    for date in daterange(args.date, end_date):
+        for hour in hour_range:
+            date_str = date.strftime(DATE_FORMAT)
+            fname = "{0}/{1}_{2:02d}".format(args.output, date_str, hour)
+
+            if not args.force and os.path.isfile(fname):
+                print "File {0} already exists".format(fname)
+            else:
+                try:
+                    print "Downloading {0} {1:02d}...".format(date_str, hour),
+                    sys.stdout.flush()
+                    save_dataset(fname, date_str, hour, var_conf, args.res,
+                                 args.step, args.time, args.pl, args.lat, args.lon)
+                except (ValueError, TypeError) as err:
+                    print
+                    print_exc()
+                except (ServerError, OpenFileError) as err:
+                    print
+                    print eval(str(err))
+                except:
+                    print
+                    print "Unexpected error:", sys.exc_info()[0]
+                    print sys.exc_info()[1]
+                    print_exc()
+                else:
+                    print "done!"
+    return 0
 
 
 if __name__ == '__main__':

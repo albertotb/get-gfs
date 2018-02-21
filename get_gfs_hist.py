@@ -24,12 +24,12 @@ FORMAT_STR_PL = "{var}.{var}[0][{lev[0]}:{lev[1]}][{lat[0]}:{lat[1]}][{lon[0]}:{
 DATE_FORMAT   = "%Y%m%d"
 
 VARS = {"Pressure_surface":                        {"type": "surface"},
-        #"U-component_of_wind_height_above_ground": {"type": "height_above_ground", "levels": [0, 2]},
-        #"V-component_of_wind_height_above_ground": {"type": "height_above_ground", "levels": [0, 2]},
+        "U-component_of_wind_height_above_ground": {"type": "height_above_ground", "levels": [0, 2]},
+        "V-component_of_wind_height_above_ground": {"type": "height_above_ground", "levels": [0, 2]},
         "Temperature_height_above_ground":         {"type": "height_above_ground", "levels": [0, 0]},
-        #"U-component_of_wind":                     {"type": "pressure",            "levels": [0, 5]},
-        #"V-component_of_wind":                     {"type": "pressure",            "levels": [0, 5]},
-        #"Temperature":                             {"type": "pressure",            "levels": [0, 5]},
+        "U-component_of_wind":                     {"type": "pressure",            "levels": [0, 5]},
+        "V-component_of_wind":                     {"type": "pressure",            "levels": [0, 5]},
+        "Temperature":                             {"type": "pressure",            "levels": [0, 5]},
         "Geopotential_height":                     {"type": "pressure",            "levels": [0, 1]}}
 
 
