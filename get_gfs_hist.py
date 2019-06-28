@@ -1,4 +1,4 @@
-#!/bin/env python
+#!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 """ Descarga ficheros de meteorología del servidor histórico del GFS """
 

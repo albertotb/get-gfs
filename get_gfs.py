@@ -1,4 +1,4 @@
-#!/bin/env python
+#!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 """ Download meteorological files from GFS """
 
