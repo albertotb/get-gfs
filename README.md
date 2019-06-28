@@ -1,4 +1,17 @@
-DOWNLOADING METEOROLOGICAL INFORMATION FROM GFS
+## INSTALLATION
+-----------------------------------------------
+
+This scripts only work with Python 2.7+. First install [Anaconda](https://www.anaconda.com/distribution/#download-section) and then
+create an enviroment with 
+
+    conda env create -f environment.yml
+
+Then activate the environment
+
+    conda activate get-gfs
+
+
+## DOWNLOADING METEOROLOGICAL INFORMATION FROM GFS
 -----------------------------------------------
 
 Scripts to fetch meteorological data from the GFS model:
