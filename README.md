@@ -1,5 +1,4 @@
 ## INSTALLATION
------------------------------------------------
 
 This scripts only work with Python 2.7+. First install [Anaconda](https://www.anaconda.com/distribution/#download-section) and then
 create an enviroment with 
@@ -12,7 +11,6 @@ Then activate the environment
 
 
 ## DOWNLOADING METEOROLOGICAL INFORMATION FROM GFS
------------------------------------------------
 
 Scripts to fetch meteorological data from the GFS model:
  * `get_gfs.py` gets data from the real-time server, which is located at
