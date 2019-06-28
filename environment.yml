@@ -33,12 +33,16 @@ dependencies:
   - pip:
     - backports-functools-lru-cache==1.5
     - beautifulsoup4==4.7.1
+    - chardet==3.0.4
     - docopt==0.6.2
+    - idna==2.8
     - jinja2==2.10.1
     - markupsafe==1.1.1
     - pydap==3.2.2
+    - requests==2.22.0
     - singledispatch==3.4.0.3
     - soupsieve==1.9.2
+    - urllib3==1.25.3
     - webob==1.8.5
 prefix: /home/atorres/miniconda3/envs/get-gfs
 
