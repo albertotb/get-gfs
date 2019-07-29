@@ -1,6 +1,6 @@
 ## INSTALLATION
 
-This scripts only work with Python 2.7+. First install [Anaconda](https://www.anaconda.com/distribution/#download-section) and then
+This scripts only works with Python 2.7+. First install [Anaconda](https://www.anaconda.com/distribution/#download-section) and then
 create an enviroment with 
 
     conda env create -f environment.yml
