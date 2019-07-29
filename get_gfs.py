@@ -14,7 +14,7 @@ from pydap.exceptions import ServerError, OpenFileError
 from inspect import getmembers
 from traceback import print_exc
 
-URL = "http://nomads.ncep.noaa.gov:9090/dods/gfs_{res}{step}/gfs{date}/gfs_{res}{step}_{hour:02d}z.dods?"
+URL = "https://nomads.ncep.noaa.gov:9090/dods/gfs_{res}{step}/gfs{date}/gfs_{res}{step}_{hour:02d}z.dods?"
 
 FORMAT_STR    = "{var}.{var}[{time[0]}:{time[1]}][{lat[0]}:{lat[1]}][{lon[0]}:{lon[1]}]"
 FORMAT_STR_PL = "{var}.{var}[{time[0]}:{time[1]}][{lev[0]}:{lev[1]}][{lat[0]}:{lat[1]}][{lon[0]}:{lon[1]}]"
@@ -89,16 +89,16 @@ def get_file(request, param, var_conf, time, lat, lon):
     ncoord = len(lat) * len(lon)
 
     var_list = [ ((FORMAT_STR if vartype == 'surface' else FORMAT_STR_PL)
-                  .format(var, **param)) for var, vartype in var_conf.items() ]
+                  .format(var=var, **param)) for var, vartype in var_conf.items() ]
 
     try:
         dataset = open_dods(request + ','.join(var_list))
     except:
         raise OpenFileError("file '{}' not available".format(request[:-1]))
 
-    var_data  = [ var.data.reshape((ntime, -1, ncoord)) for var in dataset ]
-    var_names = ['{}{}'.format(var.id, n) for idx, var in enumerate(dataset)
-                                          for n in range(var_data[idx].shape[1])]
+    var_data  = [ var.data.reshape((ntime, -1, ncoord)) for var in dataset.values() ]
+    var_names = ['{}{}'.format(var, n) for idx, var in enumerate(dataset)
+                                       for n in range(var_data[idx].shape[1])]
 
     index   = pd.MultiIndex.from_product((lat, lon),        names=[ 'lat', 'lon'])
     columns = pd.MultiIndex.from_product((time, var_names), names=['time', 'var'])
@@ -126,7 +126,7 @@ def save_dataset(fname, date, hour, var_conf, res, step, time_tuple, lev_idx,
     time_idx = (time_tuple[0]/step, time_tuple[1]/step)
 
     # Slicing [:] downloads the data from the server
-    lat, lon = coord['lat'][:], coord['lon'][:]
+    lat, lon = coord['lat'][:].data, coord['lon'][:].data
 
     # Transform longitudes from range 0..360 to -180..180
     lon = np.where(lon > 180, lon-360, lon)
