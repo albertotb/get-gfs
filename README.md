@@ -14,7 +14,7 @@ Then activate the environment
 
 Scripts to fetch meteorological data from the GFS model:
  * `get_gfs.py` gets data from the real-time server, which is located at
-   <http://nomads.ncep.noaa.gov:9090/dods> and holds the last 15 days of data.
+   <https://nomads.ncep.noaa.gov:9090/dods> and holds the last 15 days of data.
  * `get_gfs_hist.py` gets data from the historical server, which is located
    at <https://nomads.ncdc.noaa.gov/thredds/dodsC/gfs-004/catalog.html> and
    holds the last 2 years of data.
@@ -31,9 +31,9 @@ obtained running a query directly in the browser, for instance:
 
 Similarly, for the real time server you can get this information at
 
-<http://nomads.ncep.noaa.gov:9090/dods/gfs_0p50/gfs20180212/gfs_0p50_00z.info>
-<http://nomads.ncep.noaa.gov:9090/dods/gfs_0p50/gfs20180212/gfs_0p50_00z.dds>
-<http://nomads.ncep.noaa.gov:9090/dods/gfs_0p50/gfs20180212/gfs_0p50_00z.das>
+<https://nomads.ncep.noaa.gov:9090/dods/gfs_0p50/gfs20180212/gfs_0p50_00z.info>
+<https://nomads.ncep.noaa.gov:9090/dods/gfs_0p50/gfs20180212/gfs_0p50_00z.dds>
+<https://nomads.ncep.noaa.gov:9090/dods/gfs_0p50/gfs20180212/gfs_0p50_00z.das>
 
 In the URLs you can also see some information about the meteorological variables
 such us units, minimum, maximum, representation of missing values and so on.
