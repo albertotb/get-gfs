@@ -85,6 +85,9 @@ def get_general(file, time, var_config, lat_idx, lon_idx_w, lon_idx_e):
     request_w = request + ','.join(var_w_list)
     request_e = request + ','.join(var_e_list)
 
+    print(request_w)
+    print(request_e)
+
     try:
         dataset_w = open_dods(request_w)
         dataset_e = open_dods(request_e)
@@ -100,7 +103,7 @@ def get_general(file, time, var_config, lat_idx, lon_idx_w, lon_idx_e):
                                  .reshape(nlev_dict[var_w.name], ncoord).T),
                               columns = ['{}{}'.format(var_w.name, n)
                                          for n in range(nlev_dict[var_w.name])])
-                 for var_w, var_e in zip(dataset_w, dataset_e) ]
+                 for var_w, var_e in zip(dataset_w.values(), dataset_e.values()) ]
 
     # 4. Concatenate the DataFrames for each var to obtain a single DataFrame
     #    with (nlat*nlon, nlev*nvar) Note every var can have a different number
@@ -130,7 +133,7 @@ def save_dataset(hour, date, var_config, time_tuple, lat_tuple, lon_tuple, fname
             break
 
     try:
-        lat, lon = coord['lat'][:], coord['lon'][:]
+        lat, lon = coord['lat'][:].data, coord['lon'][:].data
     except:
         # UnboundLocalError: local variable 'coord' referenced before assignment
         # none of the 180/3 + 1 datasets where present in the server
