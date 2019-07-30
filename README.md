@@ -19,6 +19,20 @@ Scripts to fetch meteorological data from the GFS model:
    at <https://nomads.ncdc.noaa.gov/thredds/dodsC/gfs-004/catalog.html> and
    holds the last 2 years of data.
 
+Example:
+
+    `./get_gfs.py -s 1 -r 0.25 -t 0 48 -x -10 10 -y -15 15 -p 0 2 -c example_conf.json 20190730 00`
+
+The previous line will download meteorology from the GFS run on 2019-07-30 at 00z:
+
+    * Temporal resolution of 1 hour
+    * Spatial resolution of 0.25º
+    * Time steps from 0 to 48 (since temporal resolution is 1h, 48 hours from 20193007 at 00)
+    * Longitudes from -10 to 10
+    * Latitudes from -15 to 15
+    * Pressure levels from 0 to 2 (only for variables that have pressure level data)
+    * Variables in `example_conf.json`
+
 To build the JSON configuration files for the historical server you can go 
 directly to the server and check the following URL for any day:
 
