@@ -2,10 +2,10 @@ name: get-gfs
 channels:
   - defaults
 dependencies:
-  - numpy=1.16.4
-  - pandas=0.24.2
-  - pip=19.1.1
-  - python=2.7
+  - python>=2.7
+  - numpy
+  - pandas
+  - pip
   - requests
   - pip:
     - pydap==3.2.2
