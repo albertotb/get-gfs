@@ -1,0 +1,33 @@
+{
+   "Pressure_surface":{
+      "type":"surface"
+   },
+   "U-component_of_wind_height_above_ground":{
+      "type":"height_above_ground",
+      "levels":[0, 2]
+   },
+   "V-component_of_wind_height_above_ground":{
+      "type":"height_above_ground",
+      "levels":[0, 2]
+   },
+   "Temperature_height_above_ground":{
+      "type":"height_above_ground",
+      "levels":[0, 0]
+   },
+   "U-component_of_wind":{
+      "type":"pressure",
+      "levels":[0, 5]
+   },
+   "V-component_of_wind":{
+      "type":"pressure",
+      "levels":[0, 5]
+   },
+   "Temperature":{
+      "type":"pressure",
+      "levels":[0, 5]
+   },
+   "Geopotential_height":{
+      "type":"pressure",
+      "levels":[0, 1]
+   }
+}
