@@ -84,13 +84,16 @@ def lon_type(str):
         return lon
 
 
-def get_file(request, param, var_conf, time, lat, lon):
+def get_file(request, param, var_conf, time, lat, lon, verbose=False):
 
     ntime  = len(time)
     ncoord = len(lat) * len(lon)
 
     var_list = [ ((FORMAT_STR if vartype == 'surface' else FORMAT_STR_PL)
                   .format(var=var, **param)) for var, vartype in var_conf.items() ]
+
+    if verbose:
+        print request + ','.join(var_list)
 
     try:
         dataset = open_dods(request + ','.join(var_list))
@@ -110,11 +113,14 @@ def get_file(request, param, var_conf, time, lat, lon):
 
 
 def save_dataset(fname, date, hour, var_conf, res, step, time_tuple, lev_idx,
-                 lat_tuple, lon_tuple):
+                 lat_tuple, lon_tuple, verbose=False):
 
     request = URL.format(date = date, hour = hour,
                          res  = "{0:.2f}".format(res).replace(".","p"),
                          step = "" if step == 3 else "_{:1d}hr".format(step))
+
+    if verbose:
+        print request + 'lat,lon'
 
     try:
         coord = open_dods(request + "lat,lon")
@@ -157,8 +163,8 @@ def save_dataset(fname, date, hour, var_conf, res, step, time_tuple, lev_idx,
         param_w  = {'lat': lat_idx, 'lon': lon_idx_w, 'time': time_idx, 'lev': lev_idx}
         param_e  = {'lat': lat_idx, 'lon': lon_idx_e, 'time': time_idx, 'lev': lev_idx}
         try:
-            data_w = get_file(request, param_w, var_conf, time, lat, lon_w)
-            data_e = get_file(request, param_e, var_conf, time, lat, lon_e)
+            data_w = get_file(request, param_w, var_conf, time, lat, lon_w, verbose=verbose)
+            data_e = get_file(request, param_e, var_conf, time, lat, lon_e, verbose=verbose)
         except:
             raise
         data = pd.concat((data_w, data_e), axis=0)
@@ -173,7 +179,7 @@ def save_dataset(fname, date, hour, var_conf, res, step, time_tuple, lev_idx,
 
         param  = {'lat': lat_idx, 'lon': lon_idx, 'time': time_idx, 'lev': lev_idx}
         try:
-            data = get_file(request, param, var_conf, time, lat, lon)
+            data = get_file(request, param, var_conf, time, lat, lon, verbose=verbose)
         except:
             raise
 
@@ -194,7 +200,8 @@ def main(args):
     parser.add_argument('-e', '--end-date', help='end date [Default: DATE]', dest='end_date')
     parser.add_argument('-o', '--output',   help='output path [Default: %(default)s]', default='.')
     parser.add_argument('-f', '--force',    help='overwrite existing files', action='store_true')
-    parser.add_argument('-v', '--version', action='version', version='%(prog)s 1.0')
+    parser.add_argument('-v', '--verbose',  help='verbose output', action='store_true')
+    parser.add_argument('--version', action='version', version='%(prog)s 1.0')
     parser.add_argument('date', metavar='DATE', help='date')
     parser.add_argument('hour', metavar='HOUR', help='hour [Default: %(default)s]', type=int, choices=range1(0,18,6), nargs='?', default=(0,6,12,18))
     args = parser.parse_args()
@@ -224,10 +231,11 @@ def main(args):
                 print "File {0} already exists".format(fname)
             else:
                 try:
-                    print "Downloading {0} {1:02d}...".format(date_str, hour),
+                    print "Downloading {0} {1:02d}...".format(date_str, hour)
                     sys.stdout.flush()
                     save_dataset(fname, date_str, hour, var_conf, args.res,
-                                 args.step, args.time, args.pl, args.lat, args.lon)
+                                 args.step, args.time, args.pl, args.lat, args.lon,
+                                 verbose=args.verbose)
                 except (ValueError, TypeError) as err:
                     print
                     print_exc()
