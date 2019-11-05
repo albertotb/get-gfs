@@ -1,4 +1,4 @@
-name: get-gfs-py3
+name: get-gfs
 channels:
   - defaults
 dependencies:
