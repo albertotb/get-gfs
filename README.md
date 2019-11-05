@@ -1,6 +1,6 @@
-## INSTALLATION
+## Installation
 
-This scripts only works with Python 2.7+. First install [Anaconda](https://www.anaconda.com/distribution/#download-section) and then
+These scripts were tested with Python 3.7+, but they should work with any Python 3 version. First install [Anaconda](https://www.anaconda.com/distribution/#download-section) and then
 create an enviroment with 
 
     conda env create -f environment.yml
@@ -10,7 +10,7 @@ Then activate the environment
     conda activate get-gfs
 
 
-## DOWNLOADING METEOROLOGICAL INFORMATION FROM GFS
+## Downloading meteorological information from GFS
 
 Scripts to fetch meteorological data from the GFS model:
  * `get_gfs.py` gets data from the real-time server, which is located at
@@ -19,7 +19,7 @@ Scripts to fetch meteorological data from the GFS model:
    at <https://nomads.ncdc.noaa.gov/thredds/dodsC/gfs-004/catalog.html> and
    holds the last 2 years of data.
 
-Example:
+Example for the real time server:
 
     ./get_gfs.py -s 1 -r 0.25 -t 0 48 -x -10 10 -y -15 15 -p 0 2 -c example_conf.json 20190730 00
 
@@ -32,6 +32,17 @@ The previous line will download meteorology from the GFS run on 2019-07-30 at 00
    * Latitudes from -15 to 15
    * Pressure levels from 0 to 2 (only for variables that have pressure level data)
    * Variables in `example_conf.json`
+
+Example for the historical server:
+
+    ./get_gfs_hist.py -t 0 10 -x -10 10 -y -10 10 -c example_conf_hist.json 20191005 00
+
+Note that the historical server:
+
+   * Only has 0.5º spatial resolution (the default)
+   * Only has 3h temporal resolution (the default)
+   * It downloads the first 10 time steps, which in turn it translates to hours 00-30 (due to temporal resolution of 3 hours)
+   * Pressure levels and heights are specified for each variable in the configuration file
 
 To build the JSON configuration files for the historical server you can go 
 directly to the server and check the following URL for any day:
@@ -51,6 +62,12 @@ Similarly, for the real time server you can get this information at
 
 In the URLs you can also see some information about the meteorological variables
 such us units, minimum, maximum, representation of missing values and so on.
+
+The output of the script is an Pandas dataframe written to an ASCII file, with a
+multi-index in the rows (lat, lon) and a multi-index in the columns
+(variables-time). It can be read back into Python using `pd.read_csv()`.
+
+## Differences between the real time server and the historical server
 
 Apart from the name of the variables, which is different in both servers (even
 though they refer to the same meteorological variable), there are also other
