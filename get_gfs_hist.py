@@ -33,7 +33,7 @@ VARS = {"Pressure_surface":                        {"type": "surface"},
         "Geopotential_height":                     {"type": "pressure",            "levels": [0, 1]}}
 
 
-def get_sequential(file, time, var_config, lat_idx, lon_idx):
+def get_sequential(file, time, var_config, lat_idx, lon_idx, verbose=False):
 
     var_list = []
     nlev_dict = {}
@@ -50,6 +50,9 @@ def get_sequential(file, time, var_config, lat_idx, lon_idx):
 
     request = URL.format(file, time) + ','.join(var_list)
 
+    if verbose:
+        print(request)
+
     try:
         dataset = open_dods(request)
     except:
@@ -63,7 +66,7 @@ def get_sequential(file, time, var_config, lat_idx, lon_idx):
     return pd.concat(var_data, axis=1)
 
 
-def get_general(file, time, var_config, lat_idx, lon_idx_w, lon_idx_e):
+def get_general(file, time, var_config, lat_idx, lon_idx_w, lon_idx_e, verbose=False):
 
     request = URL.format(file, time)
 
@@ -85,8 +88,9 @@ def get_general(file, time, var_config, lat_idx, lon_idx_w, lon_idx_e):
     request_w = request + ','.join(var_w_list)
     request_e = request + ','.join(var_e_list)
 
-    print(request_w)
-    print(request_e)
+    if verbose:
+        print(request_w)
+        print(request_e)
 
     try:
         dataset_w = open_dods(request_w)
@@ -111,7 +115,7 @@ def get_general(file, time, var_config, lat_idx, lon_idx_w, lon_idx_e):
     return pd.concat(var_data, axis=1)
 
 
-def save_dataset(hour, date, var_config, time_tuple, lat_tuple, lon_tuple, fname):
+def save_dataset(hour, date, var_config, time_tuple, lat_tuple, lon_tuple, fname, verbose=False):
     """ Download the datasets for a specific date and hour """
 
     date_str = date.strftime("%Y%m%d")
@@ -164,7 +168,7 @@ def save_dataset(hour, date, var_config, time_tuple, lat_tuple, lon_tuple, fname
 
         try:
             data_list = [get_general(file, time, var_config, lat_idx,
-                                     lon_idx_w, lon_idx_e) for time in time_list]
+                                     lon_idx_w, lon_idx_e, verbose=verbose) for time in time_list]
         except:
             raise
 
@@ -175,7 +179,7 @@ def save_dataset(hour, date, var_config, time_tuple, lat_tuple, lon_tuple, fname
             raise ValueError('Longitude not in the grid', lon_tuple)
         lon = lon[range1(*lon_idx)].tolist()
         try:
-            data_list = [get_sequential(file, time, var_config, lat_idx, lon_idx)
+            data_list = [get_sequential(file, time, var_config, lat_idx, lon_idx, verbose=verbose)
                          for time in time_list]
         except:
             raise
@@ -225,30 +229,24 @@ def main(args):
 
             if not os.path.isfile(fname) or args.force:
                 try:
-                    if args.verbose:
-                        print "Downloading {0} {1:02d}...".format(date_str, hour),
-                    save_dataset(hour, date, var_config, args.time, args.lat, args.lon, fname)
+                    print("Downloading {0} {1:02d}...".format(date_str, hour), end=' ')
+                    save_dataset(hour, date, var_config, args.time, args.lat, args.lon, fname, verbose=args.verbose)
                 except ServerError as err:
-                    if not args.verbose:
-                        print "[{0} {1:02d}]".format(date_str, hour),
-                    print eval(str(err))
+                    print("[{0} {1:02d}]".format(date_str, hour), end=' ')
+                    print(eval(str(err)))
                 except UnboundLocalError:
-                    if not args.verbose:
-                        print "[{0} {1:02d}]".format(date_str, hour),
-                    print "dataset not available"
+                    print("[{0} {1:02d}]".format(date_str, hour), end=' ')
+                    print("dataset not available")
                 #except ValueError as err:
                 #    print err
                 except:
-                    if not args.verbose:
-                        print "[{0} {1:02d}]".format(date_str, hour),
-                    print format_exc().splitlines()[-1]
+                    print("[{0} {1:02d}]".format(date_str, hour), end=' ')
+                    print(format_exc().splitlines()[-1])
                     print_exc()
                 else:
-                    if args.verbose:
-                        print "done!"
+                    print("done!")
             else:
-                if args.verbose:
-                    print "File {0} already exists (re-run with -f to overwrite)".format(fname)
+                print("File {0} already exists (re-run with -f to overwrite)".format(fname))
 
 
 if __name__ == '__main__':

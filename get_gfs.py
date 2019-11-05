@@ -17,8 +17,8 @@ from traceback import print_exc
 
 URL = "https://nomads.ncep.noaa.gov:9090/dods/gfs_{res}{step}/gfs{date}/gfs_{res}{step}_{hour:02d}z.dods?"
 
-FORMAT_STR    = "{var}.{var}[{time[0]}:{time[1]}][{lat[0]}:{lat[1]}][{lon[0]}:{lon[1]}]"
-FORMAT_STR_PL = "{var}.{var}[{time[0]}:{time[1]}][{lev[0]}:{lev[1]}][{lat[0]}:{lat[1]}][{lon[0]}:{lon[1]}]"
+FORMAT_STR    = "{var}.{var}[{time[0]:d}:{time[1]:d}][{lat[0]:d}:{lat[1]:d}][{lon[0]:d}:{lon[1]:d}]"
+FORMAT_STR_PL = "{var}.{var}[{time[0]:d}:{time[1]:d}][{lev[0]:d}:{lev[1]:d}][{lat[0]:d}:{lat[1]:d}][{lon[0]:d}:{lon[1]:d}]"
 
 VAR_CONF = {"pressfc":  "surface",
             "tmp2m":    "surface",
@@ -93,11 +93,12 @@ def get_file(request, param, var_conf, time, lat, lon, verbose=False):
                   .format(var=var, **param)) for var, vartype in var_conf.items() ]
 
     if verbose:
-        print request + ','.join(var_list)
+        print(request + ','.join(var_list))
 
     try:
         dataset = open_dods(request + ','.join(var_list))
     except:
+        print(dataset)
         raise OpenFileError("file '{}' not available".format(request[:-1]))
 
     var_data  = [ var.data.reshape((ntime, -1, ncoord)) for var in dataset.values() ]
@@ -120,7 +121,7 @@ def save_dataset(fname, date, hour, var_conf, res, step, time_tuple, lev_idx,
                          step = "" if step == 3 else "_{:1d}hr".format(step))
 
     if verbose:
-        print request + 'lat,lon'
+        print(request + 'lat,lon')
 
     try:
         coord = open_dods(request + "lat,lon")
@@ -130,7 +131,8 @@ def save_dataset(fname, date, hour, var_conf, res, step, time_tuple, lev_idx,
     # We don't get the time array from the server since it is in seconds from a
     # date. Instead we compute the times in hours manually.
     time = range1(*time_tuple, step=step)
-    time_idx = (time_tuple[0]/step, time_tuple[1]/step)
+    # TODO: there is a possible problem here if the division is not exact
+    time_idx = (int(time_tuple[0]/step), int(time_tuple[1]/step))
 
     # Slicing [:] downloads the data from the server
     lat, lon = coord['lat'][:].data, coord['lon'][:].data
@@ -228,27 +230,27 @@ def main(args):
             fname = "{0}/{1}_{2:02d}".format(args.output, date_str, hour)
 
             if not args.force and os.path.isfile(fname):
-                print "File {0} already exists".format(fname)
+                print("File {0} already exists".format(fname))
             else:
                 try:
-                    print "Downloading {0} {1:02d}...".format(date_str, hour)
+                    print("Downloading {0} {1:02d}...".format(date_str, hour))
                     sys.stdout.flush()
                     save_dataset(fname, date_str, hour, var_conf, args.res,
                                  args.step, args.time, args.pl, args.lat, args.lon,
                                  verbose=args.verbose)
                 except (ValueError, TypeError) as err:
-                    print
+                    print()
                     print_exc()
                 except (ServerError, OpenFileError) as err:
-                    print
-                    print eval(str(err))
+                    print()
+                    print(eval(str(err)))
                 except:
-                    print
-                    print "Unexpected error:", sys.exc_info()[0]
-                    print sys.exc_info()[1]
+                    print()
+                    print("Unexpected error:", sys.exc_info()[0])
+                    print(sys.exc_info()[1])
                     print_exc()
                 else:
-                    print "done!"
+                    print("done!")
     return 0
 
 
