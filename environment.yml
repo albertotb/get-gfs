@@ -1,8 +1,8 @@
-name: get-gfs
+name: get-gfs-py3
 channels:
   - defaults
 dependencies:
-  - python=2.7
+  - python>=3.7
   - numpy
   - pandas
   - pip
