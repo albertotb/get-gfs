@@ -1,3 +1,8 @@
+## Note
+
+There is now a probably easier way to download this kind of data using `xarray`. There are examples downloading a ploting variables in the folder `notebook`. It wouldn't be hard to create an script similar to `get_gfs.py` with this code instead, or to adapt the existing one. The old scripts using `pydap` SHOULD still work.
+
+
 ## Installation
 
 These scripts were tested with Python 3.7+, but they should work with any Python 3 version. First install [Anaconda](https://www.anaconda.com/distribution/#download-section) and then
