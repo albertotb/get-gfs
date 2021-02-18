@@ -3,6 +3,7 @@ import xarray as xr
 import pandas as pd
 
 # File Details
+# TODO: pass as arguments to the script
 dt = '20201129'
 res = 25
 step = '1hr'
