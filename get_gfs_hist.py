@@ -17,7 +17,7 @@ from traceback import format_exc, print_exc
 sys.path.append('.')
 from get_gfs import range1, lat_type, lon_type, daterange
 
-URL           = "https://nomads.ncdc.noaa.gov/thredds/dodsC/gfs-004/{0}_{1:03d}.grb2.dods?"
+URL           = "https://www.ncei.noaa.gov/thredds/dodsC/model-gfs-004-files-old/{0}_{1:03d}.grb2.dods?"
 DIR           = "{0}/{1}/gfs_4_{1}_{2:02d}00"
 FORMAT_STR    = "{var}.{var}[0][{lat[0]}:{lat[1]}][{lon[0]}:{lon[1]}]"
 FORMAT_STR_PL = "{var}.{var}[0][{lev[0]}:{lev[1]}][{lat[0]}:{lat[1]}][{lon[0]}:{lon[1]}]"
@@ -27,10 +27,10 @@ VARS = {"Pressure_surface":                        {"type": "surface"},
         "U-component_of_wind_height_above_ground": {"type": "height_above_ground", "levels": [0, 2]},
         "V-component_of_wind_height_above_ground": {"type": "height_above_ground", "levels": [0, 2]},
         "Temperature_height_above_ground":         {"type": "height_above_ground", "levels": [0, 0]},
-        "U-component_of_wind":                     {"type": "pressure",            "levels": [0, 5]},
-        "V-component_of_wind":                     {"type": "pressure",            "levels": [0, 5]},
-        "Temperature":                             {"type": "pressure",            "levels": [0, 5]},
-        "Geopotential_height":                     {"type": "pressure",            "levels": [0, 1]}}
+        "U-component_of_wind":                     {"type": "isobaric",            "levels": [0, 5]},
+        "V-component_of_wind":                     {"type": "isobaric",            "levels": [0, 5]},
+        "Temperature":                             {"type": "isobaric",            "levels": [0, 5]},
+        "Geopotential_height":                     {"type": "isobaric",            "levels": [0, 1]}}
 
 
 def get_sequential(file, time, var_config, lat_idx, lon_idx, verbose=False):
