@@ -15,7 +15,7 @@ from pydap.exceptions import ServerError, OpenFileError
 from inspect import getmembers
 from traceback import print_exc
 
-URL = "https://nomads.ncep.noaa.gov:9090/dods/gfs_{res}{step}/gfs{date}/gfs_{res}{step}_{hour:02d}z.dods?"
+URL = "https://nomads.ncep.noaa.gov/dods/gfs_{res}{step}/gfs{date}/gfs_{res}{step}_{hour:02d}z.dods?"
 
 FORMAT_STR    = "{var}.{var}[{time[0]:d}:{time[1]:d}][{lat[0]:d}:{lat[1]:d}][{lon[0]:d}:{lon[1]:d}]"
 FORMAT_STR_PL = "{var}.{var}[{time[0]:d}:{time[1]:d}][{lev[0]:d}:{lev[1]:d}][{lat[0]:d}:{lat[1]:d}][{lon[0]:d}:{lon[1]:d}]"

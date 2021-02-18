@@ -1,6 +1,6 @@
 ## Note
 
-There is now a probably easier way to download this kind of data using `xarray`. There are examples downloading and ploting variables in the folder `notebook`. It wouldn't be hard to create an script similar to `get_gfs.py` with this code instead, or to adapt the existing one. The old scripts using `pydap` SHOULD still work.
+There is now a probably easier way to download this kind of data using `xarray`. There are examples downloading and ploting variables in the folder `notebook`. It wouldn't be hard to create an script similar to `get_gfs.py` with this code instead, or to adapt the existing one. There is now an example, `xarray_example.py`, thanks to @heyerbobby). The old scripts using `pydap` SHOULD still work.
 
 
 ## Installation
@@ -19,20 +19,20 @@ Then activate the environment
 
 Scripts to fetch meteorological data from the GFS model:
  * `get_gfs.py` gets data from the real-time server, which is located at
-   <https://nomads.ncep.noaa.gov:9090/dods> and holds the last 15 days of data.
+   <https://nomads.ncep.noaa.gov/dods/> and holds the last 15 days of data.
  * `get_gfs_hist.py` gets data from the historical server, which is located
-   at <https://nomads.ncdc.noaa.gov/thredds/dodsC/gfs-004/catalog.html> and
-   holds the last 2 years of data.
+   at <https://www.ncei.noaa.gov/thredds/catalog/model-gfs-004-files-old/catalog.html> and
+   holds the last 2 years of data (more information: <https://www.ncdc.noaa.gov/data-access/model-data/model-datasets/global-forcast-system-gfs>)
 
 Example for the real time server:
 
-    ./get_gfs.py -s 1 -r 0.25 -t 0 48 -x -10 10 -y -15 15 -p 0 2 -c example_conf.json 20190730 00
+    ./get_gfs.py -s 1 -r 0.25 -t 0 48 -x -10 10 -y -15 15 -p 0 2 -c example_conf.json 20210217 00
 
-The previous line will download meteorology from the GFS run on 2019-07-30 at 00z:
+The previous line will download meteorology from the GFS run on 2021-02-17 at 00z:
 
    * Temporal resolution of 1 hour
    * Spatial resolution of 0.25º
-   * Time steps from 0 to 48 (since temporal resolution is 1h, 48 hours from 20193007 at 00)
+   * Time steps from 0 to 48 (since temporal resolution is 1h, 48 hours from 20210217 at 00)
    * Longitudes from -10 to 10
    * Latitudes from -15 to 15
    * Pressure levels from 0 to 2 (only for variables that have pressure level data)
@@ -52,18 +52,14 @@ Note that the historical server:
 To build the JSON configuration files for the historical server you can go 
 directly to the server and check the following URL for any day:
 
-<https://nomads.ncdc.noaa.gov/thredds/dodsC/gfs-004/201802/20180217/gfs_4_20180217_1800_111.grb2.html>
+<https://www.ncei.noaa.gov/thredds/dodsC/model-gfs-004-files-old/202005/20200515/gfs_4_20200515_0600_000.grb2.html>
 
-The possible values for the `height_above_ground` and `pressure` levels can be
+The possible values for the `height_above_ground` and `isobaric` levels can be
 obtained running a query directly in the browser, for instance:
 
-<https://nomads.ncdc.noaa.gov/thredds/dodsC/gfs-004/201802/20180217/gfs_4_20180217_1800_111.grb2.ascii?pressure,height_above_ground>
+<https://www.ncei.noaa.gov/thredds/dodsC/model-gfs-004-files-old/202005/20200515/gfs_4_20200515_0600_000.grb2.ascii?isobaric,height_above_ground>
 
-Similarly, for the real time server you can get this information at
-
-<https://nomads.ncep.noaa.gov:9090/dods/gfs_0p50/gfs20180212/gfs_0p50_00z.info>
-<https://nomads.ncep.noaa.gov:9090/dods/gfs_0p50/gfs20180212/gfs_0p50_00z.dds>
-<https://nomads.ncep.noaa.gov:9090/dods/gfs_0p50/gfs20180212/gfs_0p50_00z.das>
+Similarly, for the real time server you can get this information by adding the suffix `.dds`, `.info` and `.das`
 
 In the URLs you can also see some information about the meteorological variables
 such us units, minimum, maximum, representation of missing values and so on.
