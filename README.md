@@ -1,6 +1,6 @@
 ## Note
 
-There is now a probably easier way to download this kind of data using `xarray`. There are examples downloading and ploting variables in the folder `notebook`. It wouldn't be hard to create an script similar to `get_gfs.py` with this code instead, or to adapt the existing one. There is now an example, `xarray_example.py`, thanks to @heyerbobby). The old scripts using `pydap` SHOULD still work.
+There is now a probably easier way to download this kind of data using `xarray`. There are examples downloading and ploting variables in the folder `notebook`. It wouldn't be hard to create an script similar to `get_gfs.py` with this code instead, or to adapt the existing one. There is now an example, `xarray_example.py`, thanks to @heyerbobby. The old scripts using `pydap` SHOULD still work.
 
 
 ## Installation
