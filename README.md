@@ -1,3 +1,8 @@
+## Update (22/03/2021)
+
+If you are looking to download only from the real time server, the repository https://github.com/jagoosw/getgfs contains a more polished and user-friendly version and you should probably use that instead.
+
+
 ## Note
 
 There is now a probably easier way to download this kind of data using `xarray`. There are examples downloading and ploting variables in the folder `notebook`. It wouldn't be hard to create an script similar to `get_gfs.py` with this code instead, or to adapt the existing one. There is now an example, `xarray_example.py`, thanks to @heyerbobby. The old scripts using `pydap` SHOULD still work.
