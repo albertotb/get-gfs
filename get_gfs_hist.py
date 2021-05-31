@@ -160,6 +160,10 @@ def save_dataset(
     for time in time_list:
 
         request = URL.format(file, time)
+
+        if verbose:
+            print(request)
+
         try:
             coord = open_dods(request + "lat,lon")
         except:
