@@ -127,7 +127,9 @@ def get_general(file, time, var_config, lat_idx, lon_idx_w, lon_idx_e, verbose=F
     var_data = [
         pd.DataFrame(
             (
-                np.concatenate((var_w.data, var_e.data), axis=len(var_w.shape) - 1)
+                np.concatenate(
+                    (var_w.data[0], var_e.data[0]), axis=len(var_w.data[0].shape) - 1
+                )
                 .reshape(nlev_dict[var_w.name], ncoord)
                 .T
             ),
