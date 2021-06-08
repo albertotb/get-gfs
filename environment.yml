@@ -7,7 +7,9 @@ dependencies:
   - pandas
   - pip
   - requests
+  - xarray
   - pip:
     - pydap==3.2.2
     - typer
+    - netCDF4
 
