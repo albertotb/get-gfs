@@ -8,10 +8,13 @@ dependencies:
   - pip
   - requests
   - xarray
-  - cartopy
+  #- cartopy
+  - typer
+  - netCDF4
+  - plotly=4.14.3
+  - basemap
+  - matplotlib=3.2
   - pip:
     - pydap==3.2.2
-    - typer
-    - netCDF4
-    - matplotlib
+    - black
 
