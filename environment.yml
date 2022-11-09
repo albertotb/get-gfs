@@ -2,16 +2,16 @@ name: get-gfs
 channels:
   - defaults
 dependencies:
-  - python>=3.7
+  - python==3.9
+  - pip
   - numpy
   - pandas
-  - pip
   - requests
-  - xarray
   - cartopy
   - typer
   - netCDF4
   - pip:
     - pydap==3.2.2
+    - xarray==2022.11.0
     - black
 
