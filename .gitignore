@@ -2,3 +2,5 @@
 .vscode/
 *.nc
 *.png
+*.grb2
+*.idx
