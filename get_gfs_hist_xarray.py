@@ -7,7 +7,7 @@ import xarray as xr
 
 from utils import set_logging
 
-GFS_HIST_BASE = "https://www.ncei.noaa.gov/thredds/dodsC/model-gfs-004-files-old"
+GFS_HIST_BASE = "https://www.ncei.noaa.gov/thredds/dodsC/model-gfs-004-files"
 
 
 def get_gfs_hist(
@@ -19,7 +19,7 @@ def get_gfs_hist(
 
     date_str = date.strftime("%Y%m%d")
     month_str = date.strftime("%Y%m")
-    url = f"{GFS_HIST_BASE}/{month_str}/{date_str}/gfs_4_{date_str}_{run:02d}00_{time:03d}.grb2"
+    url = f"{GFS_HIST_BASE}/{month_str}/{date_str}/gfs_3_{date_str}_{run:02d}00_{time:03d}.grb2"
 
     logging.info(url)
 
@@ -31,7 +31,7 @@ def main(date: dt.datetime = None, time: int = 0, run: int = 0, log: str = "info
 
     set_logging(log)
 
-    date = date.date() if date is not None else dt.date.today()
+    date = date.date() if date is not None else dt.date.today() - dt.timedelta(days=30)
 
     variables = [
         "u-component_of_wind_height_above_ground",

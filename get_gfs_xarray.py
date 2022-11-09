@@ -46,7 +46,7 @@ def get_gfs(
             dataset.to_netcdf(fout)
 
 
-def main(date: dt.datetime = None, hour: int = None, run: int = 0, log: str = "info"):
+def main(date: dt.datetime = None, hour: int = 0, run: int = 0, log: str = "info"):
 
     set_logging(log)
 
