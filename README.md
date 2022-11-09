@@ -1,16 +1,14 @@
+## Update (09/11/2022)
+
+There is now a probably easier way to download this kind of data using `xarray`. There are examples downloading and ploting variables in the folder `notebook`. There is also two new example scripts, `get_gfs_xarray.py` and `get_gfs_hist_xarray.py`, that download data from the real-time and historical server (see [this](https://github.com/albertotb/get-gfs/issues/9#issuecomment-1028383017) comment for more information) using xarray. Thanks to @heyerbobby for the first version of the xarray scripts. 
+
 ## Update (22/03/2021)
 
 If you are looking to download only from the real time server, the repository https://github.com/jagoosw/getgfs contains a more polished and user-friendly version and you should probably use that instead.
 
-
-## Note
-
-There is now a probably easier way to download this kind of data using `xarray`. There are examples downloading and ploting variables in the folder `notebook`. It wouldn't be hard to create an script similar to `get_gfs.py` with this code instead, or to adapt the existing one. There is now an example, `xarray_example.py`, thanks to @heyerbobby. The old scripts using `pydap` SHOULD still work.
-
-
 ## Installation
 
-These scripts were tested with Python 3.7+, but they should work with any Python 3 version. First install [Anaconda](https://www.anaconda.com/distribution/#download-section) and then
+These scripts were tested with Python 3.9, but they should work with any Python 3 version. First install [Anaconda](https://www.anaconda.com/distribution/#download-section) and then
 create an enviroment with 
 
     conda env create -f environment.yml
